@@ -6,6 +6,7 @@ export const createLead = async (req, res) => {
   try {
     const {
       employeeId,
+      employee: employeeFromBody,
       name,
       phone,
       email,
@@ -27,6 +28,13 @@ export const createLead = async (req, res) => {
       childAges,
     } = req.body;
 
+    // Support both `employeeId` and `employee` incoming field names.
+    const employeeToUse = employeeId || employeeFromBody || req.body.employee || req.body.employeeId;
+
+    if (!employeeToUse) {
+      return res.status(400).json({ success: false, message: "Employee ID is required" });
+    }
+
     const lead = await EmployeeLead.create({
       name,
       phone,
@@ -47,7 +55,7 @@ export const createLead = async (req, res) => {
       noOfChild,
       childAges,
       groupNumber,
-      employee: employeeId,
+      employee: employeeToUse,
     });
 
     console.log("New Lead Created:", lead);
@@ -80,14 +88,11 @@ export const getLeadsByEmployeeId = async (req, res) => {
     const leads = await EmployeeLead.find({ employee: employeeId })
       .populate("employee", "fullName email department");
 
-    if (!leads || leads.length === 0) {
-      return res.status(404).json({ message: "No leads found for this employee" });
-    }
-
-    res.status(200).json({
+    // Return empty list if no leads found instead of 404 — frontend expects a success response
+    return res.status(200).json({
       success: true,
       count: leads.length,
-      leads,
+      leads: leads || [],
     });
   } catch (error) {
     console.error("Error fetching leads by employee ID:", error);
@@ -142,14 +147,11 @@ export const getAllEmployeeLeads = async (req, res) => {
       .populate("employee", "fullName email department") // populate employee details
       .sort({ createdAt: -1 }); // latest first
 
-    if (!leads || leads.length === 0) {
-      return res.status(404).json({ success: false, message: "No leads found" });
-    }
-
-    res.status(200).json({
+    // Return empty array if none found to make client logic simpler
+    return res.status(200).json({
       success: true,
       count: leads.length,
-      leads,
+      leads: leads || [],
     });
   } catch (error) {
     console.error("Error fetching all employee leads:", error);

@@ -32,7 +32,7 @@ export const getMatchedLeads = async (req, res) => {
     }
 
     // Load employee with destinations field
-    const employee = await EmployeeModel.findById(employeeId).lean();
+    const employee = await Employee.findById(employeeId).lean();
 
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
@@ -48,7 +48,7 @@ export const getMatchedLeads = async (req, res) => {
     }
 
     // Load all leads
-    const leads = await LeadModel.find().lean();
+    const leads = await Lead.find().lean();
 
     // Match destination (case insensitive)
     const matchedLeads = leads.filter((lead) => {
