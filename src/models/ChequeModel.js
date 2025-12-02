@@ -15,9 +15,10 @@ const chequeSchema = new Schema({
     type:String,
     required:true,
   },
+  // Cheque validity/date is optional now — removed from UI; keep field for legacy data
   chequeValid:{
     type:Date,
-    required:true,
+    required:false,
   },
   chequeNumber:{
     type:String,
@@ -37,6 +38,12 @@ const chequeSchema = new Schema({
     enum:["clear","shifted","pending","cancelled"],
     default:"pending"
   }
+  ,
+  cancelReason: { type: String },
+  clearedDate: { type: Date },
+  // When a cheque is 'shifted', store the reason (shiftRemark) for the movement
+  // kept `shiftRemark` only — `shiftedTo` removed based on frontend design
+  shiftRemark: { type: String },
 }, { timestamps: true });
 
 

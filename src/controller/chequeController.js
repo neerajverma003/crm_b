@@ -13,11 +13,10 @@ export const createCheque = async (req, res) => {
 
 export const getAllCheque = async(req,res)=>{
     try {
-        const data = await Cheque.find({})
-        if(!data){
-            return res.status(400).json({message:"No cheque record found"})
-        }
-        return res.status(200).json(data)
+    // Return newest cheques first so UI shows the latest on top
+    const data = await Cheque.find({}).sort({ createdAt: -1 });
+    // Always return 200 with array (empty if none), letting frontend handle empty state
+    return res.status(200).json(data || []);
     } catch (error) {
         console.log(error)
         return res.status(500).json({message:"Server error"})
@@ -31,7 +30,21 @@ export const updateCheque = async (req, res) => {
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'entryDate')) {
       delete req.body.entryDate;
     }
-    const updated = await Cheque.findByIdAndUpdate(id, req.body, { new: true });
+    // Validate required fields for status changes
+    if (req.body.status === 'cancelled' && !(req.body.cancelReason && req.body.cancelReason.trim())) {
+      return res.status(400).json({ success: false, message: 'cancelReason is required when status is cancelled' });
+    }
+    if (req.body.status === 'clear' && !req.body.clearedDate) {
+      return res.status(400).json({ success: false, message: 'clearedDate is required when status is clear' });
+    }
+    // Validate shifted: when status is 'shifted', require 'shiftRemark' (reason for shifting)
+    if (req.body.status === 'shifted' && !(req.body.shiftRemark && req.body.shiftRemark.trim())) {
+      return res.status(400).json({ success: false, message: 'shiftRemark is required when status is shifted' });
+    }
+    const updatePayload = { ...req.body };
+    // Normalize clearedDate to Date if present
+    if (updatePayload.clearedDate) updatePayload.clearedDate = new Date(updatePayload.clearedDate);
+    const updated = await Cheque.findByIdAndUpdate(id, updatePayload, { new: true });
     if (!updated) return res.status(404).json({ success: false, message: "Cheque not found" });
     return res.status(200).json({ success: true, data: updated });
   } catch (error) {
