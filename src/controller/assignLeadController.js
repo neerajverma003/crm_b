@@ -65,3 +65,62 @@ export const getAssignedLeadsForEmployee = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+/**
+ * Reassign already-assigned leads from one employee to another
+ */
+export const reassignLeadsForEmployee = async (req, res) => {
+  try {
+    const { fromEmployeeId, toEmployeeId, leadIds } = req.body;
+
+    if (!fromEmployeeId || !toEmployeeId || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({
+        message: "fromEmployeeId, toEmployeeId and leadIds are required",
+      });
+    }
+
+    if (fromEmployeeId === toEmployeeId) {
+      return res.status(400).json({
+        message: "Source and destination employees must be different",
+      });
+    }
+
+    const [fromEmployee, toEmployee] = await Promise.all([
+      Employee.findById(fromEmployeeId),
+      Employee.findById(toEmployeeId),
+    ]);
+
+    if (!fromEmployee) {
+      return res.status(404).json({ message: "Source employee not found" });
+    }
+    if (!toEmployee) {
+      return res.status(404).json({ message: "Destination employee not found" });
+    }
+
+    // Update assignment records: move selected leads from one employee to another
+    const updateResult = await AssignLead.updateMany(
+      { employee: fromEmployeeId, lead: { $in: leadIds } },
+      { employee: toEmployeeId }
+    );
+
+    // Update employees' assignLeads arrays
+    await Promise.all([
+      Employee.updateOne(
+        { _id: fromEmployeeId },
+        { $pull: { assignLeads: { $in: leadIds } } }
+      ),
+      Employee.updateOne(
+        { _id: toEmployeeId },
+        { $addToSet: { assignLeads: { $each: leadIds } } }
+      ),
+    ]);
+
+    return res.status(200).json({
+      message: "Leads reassigned successfully",
+      modifiedCount: updateResult.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Error reassigning leads:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
