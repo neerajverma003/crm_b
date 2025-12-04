@@ -47,3 +47,21 @@ export const assignLeadToEmployee = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+// Get assigned leads for a specific employee
+export const getAssignedLeadsForEmployee = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+    if (!employeeId) return res.status(400).json({ message: 'employeeId is required' });
+    const assignments = await AssignLead.find({ employee: employeeId }).populate({
+      path: 'lead',
+      // include _id explicitly and commonly used fields
+      select: '_id name email phone whatsAppNo destination',
+    });
+    const leads = assignments.map((a) => a.lead).filter(Boolean);
+    return res.status(200).json({ data: leads });
+  } catch (error) {
+    console.error('Error fetching assigned leads:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

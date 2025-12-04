@@ -1,9 +1,18 @@
 import Lead from "../models/LeadModel.js"
 import Employee from "../models/employeeModel.js"
-// Get all leads
+import AssignLead from "../models/AssignLeadModel.js";
+
+// Get all leads (only those that are NOT assigned to any employee)
 export const getAllLeads = async (req, res) => {
   try {
-    const leads = await Lead.find().sort({ createdAt: -1 });
+    // Find all lead IDs that have already been assigned to some employee
+    const assignedLeadIds = await AssignLead.distinct("lead");
+
+    // Return only leads whose _id is NOT in the assigned list
+    const leads = await Lead.find({ _id: { $nin: assignedLeadIds } }).sort({
+      createdAt: -1,
+    });
+
     res.status(200).json({ success: true, data: leads });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -23,6 +23,8 @@ const chequeSchema = new Schema({
   chequeNumber:{
     type:String,
     required:true,
+    unique: true,
+    index: true,
   },
   chequeAmount:{
     type:String,

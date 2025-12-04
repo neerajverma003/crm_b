@@ -2,11 +2,24 @@ import Cheque from "../models/ChequeModel.js"
 
 export const createCheque = async (req, res) => {
   try {
+    // Prevent duplicates: enforce unique chequeNumber
+    const { chequeNumber } = req.body;
+    if (chequeNumber) {
+      const existing = await Cheque.findOne({ chequeNumber: chequeNumber.toString().trim() });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Duplicate cheque entry', existing });
+      }
+    }
+
     const cheque = await Cheque.create(req.body);
-    console.log("✅ Cheque Created:", cheque);
+    console.log(" Cheque Created:", cheque);
     res.status(201).json({ success: true, data: cheque });
   } catch (error) {
-    console.error("❌ Error creating cheque:", error);
+    console.error(" Error creating cheque:", error);
+    // Handle duplicate key error from MongoDB (race conditions)
+    if (error && error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Duplicate cheque entry (unique constraint)', error });
+    }
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -41,6 +54,16 @@ export const updateCheque = async (req, res) => {
     if (req.body.status === 'shifted' && !(req.body.shiftRemark && req.body.shiftRemark.trim())) {
       return res.status(400).json({ success: false, message: 'shiftRemark is required when status is shifted' });
     }
+    // Prevent duplicates on update by chequeNumber only
+    const existingDoc = await Cheque.findById(id);
+    if (!existingDoc) return res.status(404).json({ success: false, message: 'Cheque not found' });
+    const targetChequeNumber = req.body.chequeNumber !== undefined ? (req.body.chequeNumber || '').toString().trim() : (existingDoc.chequeNumber || '').toString().trim();
+    if (targetChequeNumber) {
+      const duplicate = await Cheque.findOne({ chequeNumber: targetChequeNumber, _id: { $ne: id } });
+      if (duplicate) {
+        return res.status(400).json({ success: false, message: 'Duplicate cheque entry', existing: duplicate });
+      }
+    }
     const updatePayload = { ...req.body };
     // Normalize clearedDate to Date if present
     if (updatePayload.clearedDate) updatePayload.clearedDate = new Date(updatePayload.clearedDate);
@@ -48,7 +71,7 @@ export const updateCheque = async (req, res) => {
     if (!updated) return res.status(404).json({ success: false, message: "Cheque not found" });
     return res.status(200).json({ success: true, data: updated });
   } catch (error) {
-    console.error("❌ Error updating cheque:", error);
+    console.error(" Error updating cheque:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
