@@ -4,6 +4,7 @@ import {
   getAllDestinations,
   deleteDestination,
   assignDestination,
+  removeEmployeeDestinations,
 } from "../controller/employeeDestinationnController.js";
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.get("/", getAllDestinations);
 // DELETE
 router.delete("/:id", deleteDestination);
 router.post("/assign-destination", assignDestination);
+router.post("/remove-destinations/:employeeId", removeEmployeeDestinations);
 
 
 export default router;

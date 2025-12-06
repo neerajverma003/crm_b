@@ -58,7 +58,10 @@ export const getAssignedLeadsForEmployee = async (req, res) => {
       // include _id explicitly and commonly used fields
       select: '_id name email phone whatsAppNo destination',
     });
-    const leads = assignments.map((a) => a.lead).filter(Boolean);
+    const leads = assignments.map((a) => ({
+      ...a.lead.toObject(),
+      assignmentId: a._id, // Add the assignment record's ID for deletion
+    })).filter(Boolean);
     return res.status(200).json({ data: leads });
   } catch (error) {
     console.error('Error fetching assigned leads:', error);
@@ -121,6 +124,45 @@ export const reassignLeadsForEmployee = async (req, res) => {
     });
   } catch (error) {
     console.error("Error reassigning leads:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+/**
+ * Remove an assigned lead (delete assignment)
+ */
+export const removeAssignedLead = async (req, res) => {
+  try {
+    const { assignLeadId } = req.params;
+    
+    if (!assignLeadId) {
+      return res.status(400).json({ message: "assignLeadId is required" });
+    }
+    
+    // Find the assignment to get employee and lead info
+    const assignment = await AssignLead.findById(assignLeadId);
+    
+    if (!assignment) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+    
+    const employeeId = assignment.employee;
+    const leadId = assignment.lead;
+    
+    // Delete the assignment
+    await AssignLead.deleteOne({ _id: assignLeadId });
+    
+    // Remove from employee's assignLeads array
+    await Employee.updateOne(
+      { _id: employeeId },
+      { $pull: { assignLeads: leadId } }
+    );
+    
+    return res.status(200).json({
+      message: "Assignment removed successfully",
+    });
+  } catch (error) {
+    console.error("Error removing assigned lead:", error);
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };

@@ -183,6 +183,7 @@ export const getAllEmployee = async (req, res) => {
       .populate("company", "companyName")       // fetch company name
       .populate("designation", "designation")   // fetch designation title
       .populate("department", "dep")           // fetch department name
+      .populate("destinations", "destination") // fetch assigned destinations
       .select("-password");                     // hide sensitive data
 
     return res.status(200).json({
