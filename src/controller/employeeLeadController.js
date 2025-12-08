@@ -26,6 +26,8 @@ export const createLead = async (req, res) => {
       noOfPerson,
       noOfChild,
       childAges,
+      routedFromEmployee,
+      isActioned,
     } = req.body;
 
     // Support both `employeeId` and `employee` incoming field names.
@@ -56,6 +58,8 @@ export const createLead = async (req, res) => {
       childAges,
       groupNumber,
       employee: employeeToUse,
+      routedFromEmployee: routedFromEmployee || null,
+      isActioned: isActioned !== undefined ? isActioned : false,
     });
 
     console.log("New Lead Created:", lead);
@@ -84,9 +88,10 @@ export const getLeadsByEmployeeId = async (req, res) => {
       return res.status(400).json({ message: "Employee ID is required" });
     }
 
-    // Only populate employee
+    // Populate both employee and routedFromEmployee fields
     const leads = await EmployeeLead.find({ employee: employeeId })
-      .populate("employee", "fullName email department");
+      .populate("employee", "fullName email department")
+      .populate("routedFromEmployee", "fullName email department");
 
     // Return empty list if no leads found instead of 404 — frontend expects a success response
     return res.status(200).json({
@@ -158,6 +163,41 @@ export const getAllEmployeeLeads = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching all employee leads",
+      error: error.message,
+    });
+  }
+};
+
+export const markLeadAsActioned = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+
+    if (!leadId) {
+      return res.status(400).json({ message: "Lead ID is required" });
+    }
+
+    // Update the lead to mark it as actioned
+    const updatedLead = await EmployeeLead.findByIdAndUpdate(
+      leadId,
+      { isActioned: true },
+      { new: true }
+    ).populate("employee", "fullName email department")
+     .populate("routedFromEmployee", "fullName email department");
+
+    if (!updatedLead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead marked as actioned",
+      data: updatedLead,
+    });
+  } catch (error) {
+    console.error("Error marking lead as actioned:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while marking lead as actioned",
       error: error.message,
     });
   }

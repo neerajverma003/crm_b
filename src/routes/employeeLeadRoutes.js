@@ -4,7 +4,8 @@ import {
   getAllEmployeeLeads,
   getAllLeads,
   getLeadsByEmployeeId,
-  updateLead, // import the new controller
+  updateLead,
+  markLeadAsActioned,
 } from "../controller/employeeLeadController.js";
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.get("/employee/:employeeId", getLeadsByEmployeeId);
 
 // 🟢 Update a lead by lead ID
 router.put("/:leadId", updateLead);
+
+// 🟢 Mark lead as actioned (when employee takes action on routed lead)
+router.put("/action/:leadId", markLeadAsActioned);
 
 router.get("/all", getAllEmployeeLeads);
 

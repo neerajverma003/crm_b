@@ -21,6 +21,8 @@ const employeeLeadSchema = new mongoose.Schema({
   tripType: { type: String },
   leadStatus: { type: String, default: "Hot" },
   notes: { type: String },
+  routedFromEmployee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null }, // Track which employee routed this lead
+  isActioned: { type: Boolean, default: false }, // Track if employee has taken action on routed lead
   createdAt: { type: Date, default: Date.now },
 });
 
