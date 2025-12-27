@@ -166,3 +166,54 @@ export const removeAssignedLead = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+/**
+ * Delete multiple assigned leads (bulk delete)
+ */
+export const bulkDeleteAssignedLeads = async (req, res) => {
+  try {
+    const { leadIds } = req.body;
+    
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({ message: "leadIds array is required and must not be empty" });
+    }
+    
+    // Find all assignments for these leads
+    const assignments = await AssignLead.find({ _id: { $in: leadIds } });
+    
+    if (assignments.length === 0) {
+      return res.status(404).json({ message: "No assignments found for the provided IDs" });
+    }
+    
+    // Get unique employee IDs and lead IDs
+    const employeeLeadMap = new Map();
+    assignments.forEach((assignment) => {
+      const empId = assignment.employee.toString();
+      if (!employeeLeadMap.has(empId)) {
+        employeeLeadMap.set(empId, []);
+      }
+      employeeLeadMap.get(empId).push(assignment.lead);
+    });
+    
+    // Delete the assignments
+    const deleteResult = await AssignLead.deleteMany({ _id: { $in: leadIds } });
+    
+    // Remove from each employee's assignLeads array
+    const updatePromises = Array.from(employeeLeadMap.entries()).map(([empId, leadsToRemove]) => {
+      return Employee.updateOne(
+        { _id: empId },
+        { $pull: { assignLeads: { $in: leadsToRemove } } }
+      );
+    });
+    
+    await Promise.all(updatePromises);
+    
+    return res.status(200).json({
+      message: "Leads deleted successfully",
+      deletedCount: deleteResult.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting assigned leads:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};

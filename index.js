@@ -1,17 +1,18 @@
 // server.js or index.js
 
 import dotenv from "dotenv";
-dotenv.config(); // ✅ Load env variables
+dotenv.config(); //  Load env variables
 
 import express from "express";
+import fileUpload from "express-fileupload";
 const app = express();
 
-import connectDB from "./config/connection.js"; // ✅ Add .js extension
-import adminRoutes from "./src/routes/adminRoutes.js"; // ✅ Add .js extension
-import companyRoutes from "./src/routes/companyRoutes.js"; // ✅ Add .js extension
-import employeeRoutes from "./src/routes/employeeRoutes.js"; // ✅ Add .js extension
-import attendanceRoute from "./src/routes/attendanceRoute.js"; // ✅ Add .js extension
-import SuperAdminRoutes from "./src/routes/SuperAdminRoutes.js"; // ✅ Add .js extension
+import connectDB from "./config/connection.js"; //  Add .js extension
+import adminRoutes from "./src/routes/adminRoutes.js"; //  Add .js extension
+import companyRoutes from "./src/routes/companyRoutes.js"; //  Add .js extension
+import employeeRoutes from "./src/routes/employeeRoutes.js"; //  Add .js extension
+import attendanceRoute from "./src/routes/attendanceRoute.js"; //  Add .js extension
+import SuperAdminRoutes from "./src/routes/SuperAdminRoutes.js"; //  Add .js extension
 import loginRoutes from "./src/routes/loginRoutes.js"
 import leadRoutes from "./src/routes/leadRoutes.js"
 import chequeRoutes from "./src/routes/chequeRoutes.js"
@@ -30,15 +31,18 @@ import teamRoutes from "./src/routes/teamRoutes.js"
 import itineraryRoutes from "./src/routes/itineraryRoutes.js"
 import cors from "cors";
 import "./src/utils/scheduleJob.js"
-import { corsOptions } from "./config/corsOptions.js"; // ✅ Add .js extension
+import { corsOptions } from "./config/corsOptions.js"; //  Add .js extension
 import  AdminAttendance  from "./src/routes/adminAttendance.js"
 import b2bCompanyRoutes from "./src/routes/b2bCompanyRoutes.js";
 import b2bState from "./src/routes/b2bStateRoutes.js";
 import EmployeeDestinationRoutes from "./src/routes/employeeDestinationRoutes.js"
 import AssignLead from "./src/routes/assignLeadRoutes.js"
-connectDB(); // ✅ Connect to MongoDB
+import disputeClientsRoutes from "./src/routes/disputeClientsRoutes.js"
+connectDB(); //  Connect to MongoDB
 
-app.use(express.json()); // ✅ Enable JSON body parsing
+app.use(express.json({ limit: '50mb' })); //  Enable JSON body parsing with limit
+app.use(express.urlencoded({ limit: '50mb', extended: true })); //  Enable form parsing with limit
+app.use(fileUpload({ useTempFiles: true, limits: { fileSize: 50 * 1024 * 1024 } })); //  Enable file upload
 app.use(cors(corsOptions));
 app.use("/b2bcompany", b2bCompanyRoutes);
 app.use("/", adminRoutes);
@@ -66,6 +70,34 @@ app.use("/teams", teamRoutes);
 app.use("/itinerary", itineraryRoutes);
 app.use("/employeedestination", EmployeeDestinationRoutes);
 app.use("/assignlead", AssignLead);
+app.use("/dispute-clients", disputeClientsRoutes);
+
+// Global error handler for uncaught errors
+app.use((err, req, res, next) => {
+  console.error("Global error handler:", err);
+  res.status(500).json({ 
+    success: false, 
+    message: err.message || "Internal server error",
+    error: process.env.NODE_ENV === 'development' ? err : undefined
+  });
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+// Simple healthcheck / connectivity probe to verify server + CORS
+app.get('/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({ success: true, message: 'pong', time: new Date().toISOString() });
+});
+
 app.listen(process.env.PORT, () => {
   console.log(`Server started on port ${process.env.PORT}`);
 });

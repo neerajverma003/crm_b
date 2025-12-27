@@ -348,9 +348,9 @@ export const getMyLeaves = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    // 🟢 FIXED: use "companyId" not "company"
+    //  FIXED: use "companyId" not "company"
     const leaves = await Leave.find({ employeeId })
-      .populate("companyId", "name") // ✅ Correct field name
+      .populate("companyId", "name") //  Correct field name
       .sort({ appliedAt: -1 });
 
     if (!leaves || leaves.length === 0) {
@@ -366,7 +366,7 @@ export const getMyLeaves = async (req, res) => {
       leaves,
     });
   } catch (error) {
-    console.error("❌ Error fetching leaves:", error);
+    console.error(" Error fetching leaves:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching leaves",
@@ -391,10 +391,51 @@ export const getAssignedRoles = async (req, res) => {
       return res.json({ success: true, assignedRoles: [] });
     }
 
-    return res.json({
-      success: true,
-      assignedRoles: assigned.assignedRoles || [],
-    });
+    const assignedRoles = assigned.assignedRoles || [];
+
+    // Enrich assignedRoles with role names and subRole names for frontend
+    const enriched = await Promise.all(
+      assignedRoles.map(async (ar) => {
+        // Resolve role names
+        let roleNames = [];
+        try {
+          if (Array.isArray(ar.roleId) && ar.roleId.length) {
+            const rolesDocs = await Role.find({ _id: { $in: ar.roleId } }).select("role");
+            roleNames = rolesDocs.map((d) => d.role);
+          }
+        } catch (e) {
+          roleNames = [];
+        }
+
+        // Resolve subRole names
+        let subRoles = [];
+        try {
+          if (Array.isArray(ar.subRoles) && ar.subRoles.length) {
+            // Find roles that contain these subRole ids
+            const allRoles = await Role.find({ 'subRole._id': { $in: ar.subRoles } }).lean();
+            // Build a map of subRoleId -> name
+            const map = {};
+            for (const r of allRoles) {
+              for (const s of r.subRole || []) {
+                map[s._id.toString()] = s.subRoleName;
+              }
+            }
+
+            subRoles = ar.subRoles.map((sid) => ({ _id: sid, name: map[sid.toString()] || sid }));
+          }
+        } catch (e) {
+          subRoles = (ar.subRoles || []).map((sid) => ({ _id: sid, name: sid }));
+        }
+
+        return {
+          ...ar,
+          roleNames,
+          subRoles,
+        };
+      })
+    );
+
+    return res.json({ success: true, assignedRoles: enriched });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Error fetching roles" });
@@ -433,7 +474,7 @@ export const assignWorkRole = async (req, res) => {
   try {
     const { employeeId, companyIds, workRoles, subRoles = [], points = [] } = req.body;
 
-    // 1️⃣ Validation
+    // 1️ Validation
     if (!employeeId || !companyIds?.length || !workRoles?.length) {
       return res.status(400).json({
         success: false,
@@ -441,7 +482,7 @@ export const assignWorkRole = async (req, res) => {
       });
     }
 
-    // 2️⃣ Fetch employee
+    // 2️ Fetch employee
     const employee = await Employee.findById(employeeId);
     if (!employee) {
       return res.status(404).json({
@@ -450,12 +491,12 @@ export const assignWorkRole = async (req, res) => {
       });
     }
 
-    // 3️⃣ Convert all IDs to ObjectId
+    // 3️ Convert all IDs to ObjectId
     const companyObjectIds = companyIds.map(c => new Types.ObjectId(c));
     const workRoleObjectIds = workRoles.map(r => new Types.ObjectId(r));
     const subRoleObjectIds = subRoles.map(s => new Types.ObjectId(s));
 
-    // 4️⃣ Check for duplicates in assignedRoles
+    // 4️ Check for duplicates in assignedRoles
     const isDuplicate = employee.assignedRoles.some((ar) => {
       const roleMatch = ar.roleId.some(r => workRoleObjectIds.includes(r));
       const companyMatch = ar.companyIds.some(c => companyObjectIds.includes(c));
@@ -471,7 +512,7 @@ export const assignWorkRole = async (req, res) => {
       });
     }
 
-    // 5️⃣ Push new assignedRole
+    // 5️ Push new assignedRole
     employee.assignedRoles.push({
       roleId: workRoleObjectIds,
       companyIds: companyObjectIds,
@@ -488,7 +529,7 @@ export const assignWorkRole = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error in assignWorkRole:", error);
+    console.error(" Error in assignWorkRole:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

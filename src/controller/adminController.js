@@ -69,6 +69,11 @@ export const editAdmin = async (req, res) => {
   try {
     const { adminId } = req.params;
     const updateData = req.body;
+    // If password is provided, hash it before updating
+    if (updateData && updateData.password && String(updateData.password).trim() !== "") {
+      const hashed = await bcrypt.hash(updateData.password, 10);
+      updateData.password = hashed;
+    }
 
     const admin = await Admin.findByIdAndUpdate(adminId, updateData, {
       new: true,

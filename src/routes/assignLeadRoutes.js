@@ -5,6 +5,7 @@ import {
   getAssignedLeadsForEmployee,
   reassignLeadsForEmployee,
   removeAssignedLead,
+  bulkDeleteAssignedLeads,
 } from "../controller/assignLeadController.js";
 
 const router = express.Router();
@@ -14,6 +15,9 @@ router.post("/", assignLeadToEmployee);
 
 // POST /assignlead/reassign -> move leads from one employee to another
 router.post("/reassign", reassignLeadsForEmployee);
+
+// POST /assignlead/bulk-delete -> delete multiple assigned leads
+router.post("/bulk-delete", bulkDeleteAssignedLeads);
 
 // GET /assignlead/:employeeId -> get assigned leads for an employee
 router.get("/:employeeId", getAssignedLeadsForEmployee);

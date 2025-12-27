@@ -40,7 +40,13 @@ const hotelSchema = new mongoose.Schema(
     },
     rating:{
         type: String,
-    }
+    },
+    hotelImages: [
+      {
+        type: String,
+        default: null
+      }
+    ]
   },
   { timestamps: true }
 );

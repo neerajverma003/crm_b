@@ -11,6 +11,7 @@ import {
   createLead,
   updateLead,
   deleteLead,
+  bulkDeleteLeads,
   getMatchedLeads,
   assignLead,
 } from "../controller/leadController.js";
@@ -143,6 +144,7 @@ router.get("/stats", getLeadStats);
 router.get("/status/:status", getLeadsByStatus);
 router.get("/:id", getLeadById);
 router.post("/lead", createLead);
+router.post("/bulk-delete", bulkDeleteLeads);
 router.patch("/:id", updateLead);
 router.delete("/:id", deleteLead);
 router.get("/employee/matched-leads",  getMatchedLeads);

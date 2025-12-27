@@ -120,6 +120,30 @@ export const deleteLead = async (req, res) => {
   }
 };
 
+export const bulkDeleteLeads = async (req, res) => {
+  try {
+    const { leadIds } = req.body;
+    
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({ success: false, message: "leadIds array is required and must not be empty" });
+    }
+    
+    const result = await Lead.deleteMany({ _id: { $in: leadIds } });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: "No leads found for deletion" });
+    }
+    
+    res.status(200).json({ 
+      success: true, 
+      message: `${result.deletedCount} lead(s) deleted successfully`,
+      deletedCount: result.deletedCount 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 export const getLeadsByStatus = async (req, res) => {
   try {

@@ -2,7 +2,7 @@ import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "./cloudinary.js"; // make sure this exists
 
-// Configure Cloudinary storage
+// Configure Cloudinary storage - generic
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -14,7 +14,26 @@ const storage = new CloudinaryStorage({
   },
 });
 
+// For document uploads, use memory storage to avoid Cloudinary parsing issues
+// Files will be uploaded to Cloudinary in the controller
+const memoryStorage = multer.memoryStorage();
+
 // Multer upload middleware
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    cb(null, true);
+  }
+});
+
+const documentUpload = multer({ 
+  storage: memoryStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    cb(null, true);
+  }
+});
 
 export default upload;
+export { documentUpload, cloudinary };
