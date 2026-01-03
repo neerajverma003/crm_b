@@ -22,6 +22,18 @@ const operationLeadSchema = new mongoose.Schema({
   tripType: { type: String },
   leadStatus: { type: String },
   notes: { type: String },
+  // Details modal fields (copied from EmployeeLead)
+  itinerary: { type: String },
+  inclusion: { type: String },
+  specialInclusions: { type: String },
+  exclusion: { type: String },
+  tokenAmount: { type: Number },
+  totalAmount: { type: Number },
+  advanceRequired: { type: Number },
+  discount: { type: Number },
+  totalAirfare: { type: Number },
+  advanceAirfare: { type: Number },
+  discountAirfare: { type: Number },
   documents: [
     {
       personName: { type: String },
@@ -36,6 +48,14 @@ const operationLeadSchema = new mongoose.Schema({
   routedFromEmployee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null },
   transferredAt: { type: Date, default: Date.now },
   originalCreatedAt: { type: Date },
+  messages: [
+    {
+      text: { type: String },
+      senderName: { type: String },
+      sender: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+      sentAt: { type: Date, default: Date.now },
+    }
+  ],
 });
 
 const OperationLead = mongoose.model("OperationLead", operationLeadSchema);

@@ -15,12 +15,33 @@ const employeeLeadSchema = new mongoose.Schema({
   noOfPerson: { type: Number },
   noOfChild: { type: Number },
   childAges: [{ type: Number }],       // dynamic array of child ages
-  groupNumber: { type: String },       // ✅ added to match frontend
+  groupNumber: { type: String },       //  added to match frontend
   leadSource: { type: String },
   leadType: { type: String },
   tripType: { type: String },
   leadStatus: { type: String, default: "Hot" },
+  leadInterestStatus: { type: String, enum: ["", "Interested", "Not Interested", "Connected", "Not Connected", "Follow Up"], default: "" }, // Track lead interest status
+  // Messages left by employee for this lead (appended as array)
+  messages: [
+    {
+      text: { type: String },
+      sentAt: { type: Date, default: Date.now },
+      sender: { type: String }, // optional: who sent the message (employee id or name)
+    },
+  ],
   notes: { type: String },
+  // Details modal fields
+  itinerary: { type: String }, // filename of uploaded itinerary
+  inclusion: { type: String }, // inclusions in package
+  specialInclusions: { type: String }, // special inclusions (optional)
+  exclusion: { type: String }, // exclusions from package
+  tokenAmount: { type: Number }, // token amount (optional)
+  totalAmount: { type: Number }, // total land package cost
+  advanceRequired: { type: Number }, // advance for land package
+  discount: { type: Number }, // discount on land package
+  totalAirfare: { type: Number }, // total airfare/train fare cost
+  advanceAirfare: { type: Number }, // advance for airfare
+  discountAirfare: { type: Number }, // discount on airfare
   routedFromEmployee: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", default: null }, // Track which employee routed this lead
   isActioned: { type: Boolean, default: false }, // Track if employee has taken action on routed lead
   createdAt: { type: Date, default: Date.now },

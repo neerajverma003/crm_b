@@ -4,8 +4,12 @@ import {
   getAllEmployeeLeads,
   getAllLeads,
   getLeadsByEmployeeId,
+  getLeadById,
+  getOperationLeadById,
   updateLead,
   markLeadAsActioned,
+  addMessage,
+  getMessages,
   transferLeadToOperation,
   updateOperationLead,
   getTransferLeadsByEmployee,
@@ -14,6 +18,7 @@ import {
   uploadTransferLeadDocuments,
   deleteTransferDocument,
   moveTransferLeadToCustomer,
+  saveDetails,
 } from "../controller/employeeLeadController.js";
 import { documentUpload } from "../../config/upload.js";
 
@@ -28,8 +33,20 @@ router.get("/get", getAllLeads);
 //  Get leads by employee ID
 router.get("/employee/:employeeId", getLeadsByEmployeeId);
 
+//  Get a single lead by ID (with all details)
+router.get("/:leadId", getLeadById);
+
 //  Update a lead by lead ID
 router.put("/:leadId", updateLead);
+
+// Add a message to a lead
+router.post("/:leadId/message", addMessage);
+
+// Get paginated messages for a lead
+router.get("/:leadId/messages", getMessages);
+
+// Save details for a lead (itinerary, inclusions, costs, etc.)
+router.post("/:leadId/details", saveDetails);
 
 //  Mark lead as actioned (when employee takes action on routed lead)
 router.put("/action/:leadId", markLeadAsActioned);
@@ -50,6 +67,8 @@ router.put("/transfer/:leadId", updateOperationLead);
 router.get("/transfer/all", getAllTransferLeads);
 // Get transfer leads for an employee
 router.get("/transfer/employee/:employeeId", getTransferLeadsByEmployee);
+// Get a single transfer/operation lead by ID (specific - placed after other /transfer routes)
+router.get("/transfer/:leadId", getOperationLeadById);
 // Migrate any flagged leads (one-time helper)
 router.post("/migrate-transfers", migrateTransferFlags);
 

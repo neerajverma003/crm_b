@@ -38,6 +38,7 @@ import b2bState from "./src/routes/b2bStateRoutes.js";
 import EmployeeDestinationRoutes from "./src/routes/employeeDestinationRoutes.js"
 import AssignLead from "./src/routes/assignLeadRoutes.js"
 import disputeClientsRoutes from "./src/routes/disputeClientsRoutes.js"
+import cloudinary from "./config/cloudinary.js";
 connectDB(); //  Connect to MongoDB
 
 app.use(express.json({ limit: '50mb' })); //  Enable JSON body parsing with limit
@@ -97,6 +98,49 @@ app.get('/ping', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({ success: true, message: 'pong', time: new Date().toISOString() });
 });
+
+// File upload endpoint for itinerary PDFs (Cloudinary)
+app.post('/upload', async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ success: false, message: 'No file provided' });
+    }
+
+    const file = req.files.file;
+    const { leadName } = req.body; // Get lead name from request body
+    
+    const allowedMimes = ['application/pdf'];
+    
+    if (!allowedMimes.includes(file.mimetype)) {
+      return res.status(400).json({ success: false, message: 'Only PDF files are allowed' });
+    }
+
+    const maxSize = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxSize) {
+      return res.status(400).json({ success: false, message: 'File size exceeds 10 MB limit' });
+    }
+
+    // Create folder path: customer_data/{leadName}
+    const folderPath = leadName ? `customer_data/${leadName.replace(/\s+/g, '_')}` : 'customer_data/itineraries';
+
+    // Upload to Cloudinary with organized folder structure
+    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+      resource_type: 'raw',
+      folder: folderPath,
+      use_filename: true,
+      access_mode: 'public',
+    });
+
+    console.log('Cloudinary upload result:', { secure_url: result.secure_url, public_id: result.public_id });
+    res.status(200).json({ success: true, fileUrl: result.secure_url, message: 'File uploaded successfully' });
+  } catch (error) {
+    console.error('Upload endpoint error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 app.listen(process.env.PORT, () => {
   console.log(`Server started on port ${process.env.PORT}`);

@@ -1,4 +1,5 @@
 import EmployeeLead from "../models/employeeLeadModel.js";
+import Employee from "../models/employeeModel.js";
 import OperationLead from "../models/operationLeadModel.js";
 import CustomerCreation from "../models/customerCreation.js";
 import { cloudinary } from "../../config/upload.js";
@@ -19,6 +20,7 @@ export const createLead = async (req, res) => {
       leadType,
       tripType,
       leadStatus,
+      leadInterestStatus,
       notes,
       noOfDays,
       customNoOfDays,
@@ -50,6 +52,7 @@ export const createLead = async (req, res) => {
       leadType,
       tripType,
       leadStatus,
+      leadInterestStatus: leadInterestStatus || "",
       notes,
       noOfDays,
       customNoOfDays,
@@ -110,6 +113,30 @@ export const getLeadsByEmployeeId = async (req, res) => {
   }
 };
 
+// Get a single lead by ID (with all details)
+export const getLeadById = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+
+    if (!leadId) {
+      return res.status(400).json({ success: false, message: "Lead ID is required" });
+    }
+
+    const lead = await EmployeeLead.findById(leadId)
+      .populate("employee", "fullName email department")
+      .populate("routedFromEmployee", "fullName email department");
+
+    if (!lead) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
+    return res.status(200).json({ success: true, data: lead });
+  } catch (error) {
+    console.error("Error fetching lead by ID:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const updateLead = async (req, res) => {
   try {
     const { leadId } = req.params; // ID of the lead to update
@@ -142,6 +169,70 @@ export const updateLead = async (req, res) => {
       message: "Server error while updating lead",
       error: error.message,
     });
+  }
+};
+
+// Add a message to a lead's messages array
+export const addMessage = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+    const { message, sentAt, sender } = req.body;
+
+    if (!leadId) return res.status(400).json({ success: false, message: 'leadId is required' });
+    if (!message || !message.trim()) return res.status(400).json({ success: false, message: 'message is required' });
+
+    const msg = { text: message.trim(), sentAt: sentAt ? new Date(sentAt) : new Date(), sender: sender || null };
+
+    const updatedLead = await EmployeeLead.findByIdAndUpdate(
+      leadId,
+      { $push: { messages: msg } },
+      { new: true }
+    );
+
+    if (!updatedLead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+    return res.status(200).json({ success: true, data: updatedLead });
+  } catch (error) {
+    console.error('Error adding message to lead:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get paginated messages for a lead (latest first)
+export const getMessages = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '10', 10);
+
+    if (!leadId) return res.status(400).json({ success: false, message: 'leadId is required' });
+
+    const lead = await EmployeeLead.findById(leadId).select('messages');
+    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+    // Reverse messages so latest are first
+    const allMessages = (lead.messages || []).slice().reverse();
+    const total = allMessages.length;
+    const start = (page - 1) * limit;
+    const paged = allMessages.slice(start, start + limit);
+
+    // Resolve sender ids to employee full names (batch unique ids)
+    const senderIds = [...new Set(paged.map((m) => m.sender).filter(Boolean))];
+    let senderMap = {};
+    if (senderIds.length > 0) {
+      const employees = await Employee.find({ _id: { $in: senderIds } }).select('fullName');
+      employees.forEach((emp) => { senderMap[String(emp._id)] = emp.fullName || null; });
+    }
+
+    const pagedWithNames = paged.map((m) => ({
+      ...m.toObject ? m.toObject() : m,
+      senderName: m.sender ? (senderMap[String(m.sender)] || null) : null,
+    }));
+
+    return res.status(200).json({ success: true, data: pagedWithNames, page, limit, total });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -238,8 +329,21 @@ export const transferLeadToOperation = async (req, res) => {
       tripType: lead.tripType,
       leadStatus: lead.leadStatus,
       notes: lead.notes,
+      // Copy details fields so operation lead preserves full data
+      itinerary: lead.itinerary || "",
+      inclusion: lead.inclusion || "",
+      specialInclusions: lead.specialInclusions || "",
+      exclusion: lead.exclusion || "",
+      tokenAmount: lead.tokenAmount || 0,
+      totalAmount: lead.totalAmount || 0,
+      advanceRequired: lead.advanceRequired || 0,
+      discount: lead.discount || 0,
+      totalAirfare: lead.totalAirfare || 0,
+      advanceAirfare: lead.advanceAirfare || 0,
+      discountAirfare: lead.discountAirfare || 0,
       routedFromEmployee: lead.routedFromEmployee,
       originalCreatedAt: lead.createdAt,
+      messages: lead.messages || [],
     });
 
     // Delete original lead
@@ -336,6 +440,22 @@ export const getTransferLeadsByEmployee = async (req, res) => {
     return res.status(200).json({ success: true, count: leads.length, data: leads });
   } catch (error) {
     console.error("Error fetching transfer leads:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get a single OperationLead by ID (with documents and employee populated)
+export const getOperationLeadById = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+    if (!leadId) return res.status(400).json({ success: false, message: 'leadId is required' });
+
+    const opLead = await OperationLead.findById(leadId).populate('employee', 'fullName phone officialNo department');
+    if (!opLead) return res.status(404).json({ success: false, message: 'Operation lead not found' });
+
+    return res.status(200).json({ success: true, data: opLead });
+  } catch (error) {
+    console.error('Error fetching operation lead by id:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -615,6 +735,57 @@ export const deleteTransferDocument = async (req, res) => {
     return res.status(200).json({ success: true, message: 'Document removed', lead: updatedLead });
   } catch (error) {
     console.error('Error deleting transfer document:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Save details for a lead (itinerary, inclusions, exclusions, costs)
+export const saveDetails = async (req, res) => {
+  try {
+    const { leadId } = req.params;
+    const {
+      itinerary,
+      inclusion,
+      specialInclusions,
+      exclusion,
+      tokenAmount,
+      totalAmount,
+      advanceRequired,
+      discount,
+      totalAirfare,
+      advanceAirfare,
+      discountAirfare,
+    } = req.body;
+
+    if (!leadId) {
+      return res.status(400).json({ success: false, message: "Lead ID is required" });
+    }
+
+    const lead = await EmployeeLead.findByIdAndUpdate(
+      leadId,
+      {
+        itinerary: itinerary || "",
+        inclusion: inclusion || "",
+        specialInclusions: specialInclusions || "",
+        exclusion: exclusion || "",
+        tokenAmount: tokenAmount || 0,
+        totalAmount: totalAmount || 0,
+        advanceRequired: advanceRequired || 0,
+        discount: discount || 0,
+        totalAirfare: totalAirfare || 0,
+        advanceAirfare: advanceAirfare || 0,
+        discountAirfare: discountAirfare || 0,
+      },
+      { new: true }
+    );
+
+    if (!lead) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "Details saved successfully", lead });
+  } catch (error) {
+    console.error("Error saving lead details:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
