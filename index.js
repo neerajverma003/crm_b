@@ -38,6 +38,7 @@ import b2bState from "./src/routes/b2bStateRoutes.js";
 import EmployeeDestinationRoutes from "./src/routes/employeeDestinationRoutes.js"
 import AssignLead from "./src/routes/assignLeadRoutes.js"
 import disputeClientsRoutes from "./src/routes/disputeClientsRoutes.js"
+import invoiceRoutes from "./src/routes/invoiceRoutes.js"
 import cloudinary from "./config/cloudinary.js";
 connectDB(); //  Connect to MongoDB
 
@@ -72,6 +73,7 @@ app.use("/itinerary", itineraryRoutes);
 app.use("/employeedestination", EmployeeDestinationRoutes);
 app.use("/assignlead", AssignLead);
 app.use("/dispute-clients", disputeClientsRoutes);
+app.use("/invoice", invoiceRoutes);
 
 // Global error handler for uncaught errors
 app.use((err, req, res, next) => {
