@@ -34,6 +34,8 @@ import "./src/utils/scheduleJob.js"
 import { corsOptions } from "./config/corsOptions.js"; //  Add .js extension
 import  AdminAttendance  from "./src/routes/adminAttendance.js"
 import b2bCompanyRoutes from "./src/routes/b2bCompanyRoutes.js";
+import b2bCompanyLeadRoutes from "./src/routes/b2bCompanyLeadRoutes.js";
+import b2bOperationLeadRoutes from "./src/routes/b2bOperationLeadRoutes.js";
 import b2bState from "./src/routes/b2bStateRoutes.js";
 import EmployeeDestinationRoutes from "./src/routes/employeeDestinationRoutes.js"
 import AssignLead from "./src/routes/assignLeadRoutes.js"
@@ -47,6 +49,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true })); //  Enable form 
 app.use(fileUpload({ useTempFiles: true, limits: { fileSize: 50 * 1024 * 1024 } })); //  Enable file upload
 app.use(cors(corsOptions));
 app.use("/b2bcompany", b2bCompanyRoutes);
+app.use("/b2b-leads", b2bCompanyLeadRoutes);
+app.use("/b2b-operation-leads", b2bOperationLeadRoutes);
 app.use("/", adminRoutes);
 app.use("/company", companyRoutes);
 app.use("/leads", leadRoutes);
